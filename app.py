@@ -28,7 +28,7 @@ def setup_tracker():
     # You can move this to a config file later
     teams = [
         {
-            "name": "Team Alpha",
+            "name": "Team Tim",
             "repos": ["https://github.com/timf34/HackIrelandLeaderboard"]
         },
         # Add more teams as needed
@@ -55,6 +55,11 @@ def index():
 @app.route('/api/leaderboard')
 def get_leaderboard():
     leaderboard = tracker.get_leaderboard()
+    
+    # Make sure None values are converted to 0 for sorting
+    for team in leaderboard:
+        if team["total_commits"] is None:
+            team["total_commits"] = 0
     
     # Sort and limit to top 15 teams
     sorted_leaderboard = sorted(leaderboard, key=lambda x: x["total_commits"], reverse=True)

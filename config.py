@@ -6,7 +6,7 @@ Add your teams and their repositories here.
 # List of teams and their repositories
 TEAMS = [
     {
-        "name": "Team Alpha",
+        "name": "Team Tim",
         "repos": [
             "https://github.com/timf34/HackIrelandLeaderboard"
         ]
