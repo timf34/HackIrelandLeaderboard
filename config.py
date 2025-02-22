@@ -15,6 +15,41 @@ load_dotenv()
 # Path to the teams CSV file
 TEAMS_CSV_PATH = 'teams.csv'
 
+def validate_github_url(url):
+    """Validate if a GitHub URL is well-formed and accessible."""
+    try:
+        # Clean the URL first
+        url = url.strip().rstrip('/')
+        
+        parsed = urlparse(url)
+        if not parsed.netloc == 'github.com':
+            return False, "Not a GitHub URL"
+        
+        path_parts = parsed.path.strip('/').split('/')
+        if len(path_parts) < 2:
+            return False, "Invalid GitHub repository URL format - must include both owner and repository name"
+            
+        # Construct proper API URL
+        api_url = f"https://api.github.com/repos/{path_parts[0]}/{path_parts[1]}"
+        
+        headers = {'Authorization': f'token {GITHUB_TOKEN}'} if GITHUB_TOKEN else {}
+        response = requests.get(api_url, headers=headers)
+        
+        if response.status_code == 200:
+            repo_data = response.json()
+            if repo_data.get('archived', False):
+                return False, "Repository is archived"
+            return True, "Repository exists and is accessible"
+        elif response.status_code == 404:
+            return False, "Repository not found"
+        elif response.status_code == 403:
+            return False, "Rate limit exceeded or access denied"
+        else:
+            return False, f"HTTP Error: {response.status_code}"
+            
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
 def load_team_configs():
     """Load and format team configurations for use with GitHubTracker."""
     teams = []
@@ -24,10 +59,13 @@ def load_team_configs():
             for row in reader:
                 # Handle potential whitespace and formatting issues
                 team_number = int(row['team_number'].strip())
-                repo_url = row['repository_url'].strip()
+                repo_url = row['repository_url'].strip().rstrip('/')
                 
-                # Clean the URL (remove trailing slashes, etc)
-                repo_url = repo_url.rstrip('/')
+                # Validate URL before adding
+                is_valid, message = validate_github_url(repo_url)
+                if not is_valid:
+                    print(f"Warning: Team {team_number} repository ({repo_url}) is invalid: {message}")
+                    continue
                 
                 teams.append({
                     "name": f"Team {team_number}",
@@ -61,37 +99,6 @@ COMPETITION_CONFIG = {
     "start_time": "2024-03-20T09:00:00Z",
     "end_time": "2024-03-21T17:00:00Z"
 }
-
-def validate_github_url(url):
-    """Validate if a GitHub URL is well-formed and accessible."""
-    try:
-        # Clean the URL first
-        url = url.strip().rstrip('/')
-        
-        parsed = urlparse(url)
-        if not parsed.netloc == 'github.com':
-            return False, "Not a GitHub URL"
-        
-        path_parts = parsed.path.strip('/').split('/')
-        if len(path_parts) < 2:
-            return False, "Invalid GitHub repository URL format"
-            
-        api_url = f"https://api.github.com/repos/{path_parts[0]}/{path_parts[1]}"
-        
-        headers = {'Authorization': f'token {GITHUB_TOKEN}'} if GITHUB_TOKEN else {}
-        response = requests.get(api_url, headers=headers)
-        
-        if response.status_code == 200:
-            return True, "Repository exists and is accessible"
-        elif response.status_code == 404:
-            return False, "Repository not found"
-        elif response.status_code == 403:
-            return False, "Rate limit exceeded or access denied"
-        else:
-            return False, f"HTTP Error: {response.status_code}"
-            
-    except Exception as e:
-        return False, f"Error: {str(e)}"
 
 def main():
     """Validate all team configurations."""

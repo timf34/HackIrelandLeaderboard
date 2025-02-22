@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import List, Dict, Optional
 import threading
 import json
+import requests
+from bs4 import BeautifulSoup
 
 import requests
 from github import Github, GithubException
@@ -162,6 +164,37 @@ class GitHubTracker:
         """)
         return [{"team_name": row[0], "total_commits": row[1]} for row in cursor.fetchall()]
     
+    def _get_total_commits(self, repo_url: str) -> int:
+        """Get total commits by scraping the GitHub page."""
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            if self.github_token:
+                headers['Authorization'] = f'token {self.github_token}'
+                
+            response = requests.get(repo_url, headers=headers)
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch page for {repo_url}: {response.status_code}")
+                return 0
+                
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Try to find the commits count element
+            commits_element = soup.select_one('span.fgColor-default')
+            if commits_element:
+                # Extract the number from text like "3 Commits"
+                commits_text = commits_element.text.strip()
+                commits_count = int(''.join(filter(str.isdigit, commits_text)))
+                return commits_count
+            
+            logger.warning(f"Could not find commits count element for {repo_url}")
+            return 0
+            
+        except Exception as e:
+            logger.error(f"Error scraping commits for {repo_url}: {str(e)}")
+            return 0
+    
     def _parse_github_url(self, url: str) -> tuple:
         """Parse a GitHub URL into owner and repo name."""
         parts = url.rstrip("/").replace("https://github.com/", "").split("/")
@@ -247,41 +280,27 @@ class GitHubTracker:
             logger.error(f"Repository with ID {repo_id} not found")
             return 0
         
-        # Get last check time
-        last_checked = repo['last_checked']
-        since_timestamp = datetime.fromisoformat(last_checked.replace('Z', '+00:00')) if last_checked else None
+        # Get current total commits
+        current_total = self._get_total_commits(repo['repo_url'])
         
-        # Get new commits
-        new_commits = self._get_repo_commits(repo['repo_url'], since_timestamp)
+        if current_total == 0:
+            # Error fetching commits, don't update anything
+            return 0
         
-        # Update the database
-        cursor = self.db_conn.cursor()
-        new_commit_count = 0
+        # Calculate new commits
+        previous_total = repo['total_commits'] or 0
+        new_commit_count = max(0, current_total - previous_total)
         
-        for commit in new_commits:
-            try:
-                # Check if commit already exists
-                cursor.execute(
-                    "SELECT id FROM commits WHERE repo_id = ? AND commit_hash = ?",
-                    (repo_id, commit['hash'])
-                )
-                if cursor.fetchone() is None:  # If commit doesn't exist yet
-                    cursor.execute(
-                        "INSERT INTO commits (repo_id, commit_hash, author, message, timestamp) VALUES (?, ?, ?, ?, ?)",
-                        (repo_id, commit['hash'], commit['author'], commit['message'], commit['timestamp'])
-                    )
-                    new_commit_count += 1
-            except Exception as e:
-                logger.error(f"Error storing commit {commit['hash']}: {str(e)}")
-        
-        # Update repository's total commits
         if new_commit_count > 0:
+            cursor = self.db_conn.cursor()
+            
+            # Update repository's total commits
             cursor.execute(
-                "UPDATE repositories SET total_commits = total_commits + ?, last_checked = ? WHERE id = ?",
-                (new_commit_count, datetime.now().isoformat(), repo_id)
+                "UPDATE repositories SET total_commits = ?, last_checked = ? WHERE id = ?",
+                (current_total, datetime.now().isoformat(), repo_id)
             )
             
-            # Create a new event for the web interface
+            # Create a new event
             cursor.execute(
                 "INSERT INTO events (event_type, entity_id, data) VALUES (?, ?, ?)",
                 (
@@ -292,21 +311,14 @@ class GitHubTracker:
                         "team_name": repo['team_name'],
                         "repo_name": repo['repo_name'],
                         "new_commit_count": new_commit_count,
-                        "total_commits": repo['total_commits'] + new_commit_count
+                        "total_commits": current_total
                     })
                 )
             )
             
-            # Notify that we have new commits
+            self.db_conn.commit()
             self.new_commits_event.set()
-        else:
-            # Just update the last_checked timestamp
-            cursor.execute(
-                "UPDATE repositories SET last_checked = ? WHERE id = ?",
-                (datetime.now().isoformat(), repo_id)
-            )
         
-        self.db_conn.commit()
         return new_commit_count
     
     def run_polling_loop(self):
