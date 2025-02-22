@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hack Ireland Leaderboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/jetbrains-mono-2">
+</head>
+<body>
+    <div class="debug-grid"></div>
+    
+    <header>
+        <div class="logo-container">
+            <h1>Hack Ireland</h1>
+            <div class="tagline">Commit Leaderboard</div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="leaderboard-container">
+            <div class="leaderboard-header">
+                <div class="leaderboard-title">Team Rankings</div>
+                <div class="leaderboard-subtitle">Top 15 teams by commit count</div>
+            </div>
+            
+            <div class="leaderboard">
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th class="rank-col">#</th>
+                            <th class="team-col">Team</th>
+                            <th class="commits-col">Commits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be loaded here dynamically -->
+                        <tr class="loading">
+                            <td colspan="3">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="events-container">
+            <div class="events-header">
+                <div class="events-title">Recent Activity</div>
+            </div>
+            <div id="events-feed" class="events-feed">
+                <!-- Events will be loaded here dynamically -->
+                <div class="event loading">Waiting for activity...</div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2025 Hack Ireland</p>
+            <p>Powered by <a href="https://github.com" target="_blank">GitHub</a></p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/leaderboard.js') }}"></script>
+</body>
+</html>

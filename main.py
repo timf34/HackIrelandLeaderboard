@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 # Get GitHub token with priority: command line arg > environment variable
 # github_token = args.token if args.token else os.environ.get("GITHUB_TOKEN")
-github_token = ""
+github_token = "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"
 
 if not github_token:
     print("WARNING: No GitHub API token provided. You may hit rate limits quickly.")

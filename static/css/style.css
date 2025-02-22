@@ -1,0 +1,338 @@
+:root {
+	--font-family: "JetBrains Mono", monospace;
+	--line-height: 1.5rem;
+	--border-thickness: 2px;
+	--text-color: #fff;
+	--text-color-alt: #aaa;
+	--background-color: #13151a;
+	--background-color-alt: #1e2028;
+	--primary-color: #883aea;       /* Purple main color */
+	--primary-color-dark: #6029a7;
+	--accent-color: #f951d2;        /* Pink accent */
+	--row-highlight: rgba(136, 58, 234, 0.2);
+	
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-bold: 700;
+	
+	font-family: var(--font-family);
+	font-optical-sizing: auto;
+	font-weight: var(--font-weight-normal);
+	font-style: normal;
+	font-variant-numeric: tabular-nums lining-nums;
+	font-size: 16px;
+  }
+  
+  * {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+  }
+  
+  body {
+	background-color: var(--background-color);
+	color: var(--text-color);
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	padding: 0;
+	position: relative;
+	overflow-x: hidden;
+  }
+  
+  /* Grid background */
+  .debug-grid {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-size: 50px 50px;
+	background-position-y: -9px;
+	background-image:
+	  linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+	  linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+	mask-image: linear-gradient(
+	  to bottom,
+	  transparent,
+	  white 15%,
+	  white 75%,
+	  transparent 100%
+	);
+	z-index: -1;
+	pointer-events: none;
+  }
+  
+  header {
+	text-align: center;
+	padding: 2rem 1rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(19, 21, 26, 0.95);
+	backdrop-filter: blur(10px);
+	position: relative;
+  }
+  
+  .logo-container {
+	margin: 0 auto;
+	max-width: 800px;
+  }
+  
+  h1 {
+	font-size: 3rem;
+	font-weight: var(--font-weight-bold);
+	margin-bottom: 0.5rem;
+	letter-spacing: -1px;
+	background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	text-fill-color: transparent;
+  }
+  
+  .tagline {
+	font-size: 1.2rem;
+	color: var(--text-color-alt);
+	letter-spacing: 0.5px;
+  }
+  
+  main {
+	flex: 1;
+	max-width: 1200px;
+	width: 90%;
+	margin: 2rem auto;
+	display: grid;
+	grid-template-columns: 2fr 1fr;
+	gap: 2rem;
+  }
+  
+  .leaderboard-container, .events-container {
+	background: rgba(30, 32, 40, 0.8);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 0.5rem;
+	padding: 1.5rem;
+	backdrop-filter: blur(10px);
+	box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+	position: relative;
+	overflow: hidden;
+  }
+  
+  .leaderboard-container::before, .events-container::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: linear-gradient(
+	  90deg,
+	  transparent,
+	  var(--primary-color) 20%,
+	  var(--primary-color) 80%,
+	  transparent
+	);
+	box-shadow: 0 0 20px var(--primary-color);
+	opacity: 0.7;
+  }
+  
+  .leaderboard-header, .events-header {
+	margin-bottom: 1.5rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	padding-bottom: 1rem;
+  }
+  
+  .leaderboard-title, .events-title {
+	font-size: 1.5rem;
+	font-weight: var(--font-weight-bold);
+	color: var(--text-color);
+	margin-bottom: 0.2rem;
+  }
+  
+  .leaderboard-subtitle {
+	font-size: 0.9rem;
+	color: var(--text-color-alt);
+  }
+  
+  table {
+	width: 100%;
+	border-collapse: collapse;
+  }
+  
+  th, td {
+	text-align: left;
+	padding: 0.75rem 1rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  th {
+	font-weight: var(--font-weight-medium);
+	color: var(--text-color-alt);
+	text-transform: uppercase;
+	font-size: 0.8rem;
+	letter-spacing: 1px;
+	padding-top: 0;
+  }
+  
+  tbody tr {
+	transition: background-color 0.3s ease;
+  }
+  
+  tbody tr:hover {
+	background-color: var(--row-highlight);
+  }
+  
+  .rank-col {
+	width: 50px;
+	text-align: center;
+  }
+  
+  .team-col {
+	width: auto;
+  }
+  
+  .commits-col {
+	width: 100px;
+	text-align: right;
+  }
+  
+  .loading {
+	text-align: center;
+	color: var(--text-color-alt);
+	font-style: italic;
+	padding: 2rem 0;
+  }
+  
+  /* Top 3 Styling */
+  tr.top-1 td {
+	color: gold;
+	font-weight: var(--font-weight-bold);
+  }
+  
+  tr.top-2 td {
+	color: silver;
+	font-weight: var(--font-weight-bold);
+  }
+  
+  tr.top-3 td {
+	color: #cd7f32; /* Bronze */
+	font-weight: var(--font-weight-bold);
+  }
+  
+  tr.top-1 .rank, tr.top-2 .rank, tr.top-3 .rank {
+	position: relative;
+  }
+  
+  tr.top-1 .rank::after {
+	content: "👑";
+	margin-left: 5px;
+	font-size: 1.2rem;
+  }
+  
+  .events-feed {
+	max-height: 500px;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--primary-color) var(--background-color-alt);
+  }
+  
+  .events-feed::-webkit-scrollbar {
+	width: 6px;
+  }
+  
+  .events-feed::-webkit-scrollbar-track {
+	background: var(--background-color-alt);
+  }
+  
+  .events-feed::-webkit-scrollbar-thumb {
+	background-color: var(--primary-color);
+	border-radius: 6px;
+  }
+  
+  .event {
+	margin-bottom: 1rem;
+	padding: 1rem;
+	border-radius: 0.3rem;
+	background: rgba(0, 0, 0, 0.2);
+	border-left: 3px solid var(--primary-color);
+	transition: all 0.3s ease;
+  }
+  
+  .event.new {
+	animation: pulse 2s;
+  }
+  
+  .event .team-name {
+	font-weight: var(--font-weight-bold);
+	color: var(--primary-color);
+  }
+  
+  .event .commit-count {
+	font-weight: var(--font-weight-bold);
+  }
+  
+  .event .timestamp {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--text-color-alt);
+	margin-top: 0.5rem;
+  }
+  
+  footer {
+	margin-top: auto;
+	padding: 1.5rem;
+	text-align: center;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(19, 21, 26, 0.95);
+	backdrop-filter: blur(10px);
+  }
+  
+  .footer-content {
+	max-width: 800px;
+	margin: 0 auto;
+	display: flex;
+	justify-content: space-between;
+	color: var(--text-color-alt);
+	font-size: 0.9rem;
+  }
+  
+  footer a {
+	color: var(--primary-color);
+	text-decoration: none;
+	transition: color 0.3s ease;
+  }
+  
+  footer a:hover {
+	color: var(--accent-color);
+  }
+  
+  /* Animations */
+  @keyframes pulse {
+	0% {
+	  box-shadow: 0 0 0 0 rgba(136, 58, 234, 0.7);
+	}
+	70% {
+	  box-shadow: 0 0 0 10px rgba(136, 58, 234, 0);
+	}
+	100% {
+	  box-shadow: 0 0 0 0 rgba(136, 58, 234, 0);
+	}
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+	main {
+	  grid-template-columns: 1fr;
+	}
+	
+	h1 {
+	  font-size: 2.5rem;
+	}
+	
+	.tagline {
+	  font-size: 1rem;
+	}
+	
+	.footer-content {
+	  flex-direction: column;
+	  gap: 0.5rem;
+	}
+  }
