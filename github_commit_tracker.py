@@ -20,6 +20,7 @@ logger = logging.getLogger("github-tracker")
 
 # Constants
 POLLING_INTERVAL = 5  # seconds
+DEFAULT_API_REQUEST_TIMEOUT = 10  # seconds
 DB_PATH = "hackathon_tracker.db"
 
 class GitHubTracker:
@@ -29,13 +30,15 @@ class GitHubTracker:
         Using a token increases rate limits for API calls.
         """
         self.github_token = github_token
-        self.github = Github(github_token) if github_token else Github()
+        self.github = Github(github_token, retry=3) if github_token else Github(retry=3)
         self.db_conn = self._init_database()
         self.running = False
         self.teams_cache = {}  # Cache of team data
         self.repos_cache = {}  # Cache of repo data
         self.commit_counts = {}  # Current commit counts
         self.new_commits_event = threading.Event()  # Event for new commits
+        self.last_api_reset = 0  # Track when API rate limit resets
+        self.remaining_api_calls = 0  # Track remaining API calls
         
     def _init_database(self) -> sqlite3.Connection:
         """Initialize the SQLite database with required tables."""
@@ -164,11 +167,40 @@ class GitHubTracker:
         parts = url.rstrip("/").replace("https://github.com/", "").split("/")
         return parts[0], parts[1]
     
+    def _check_rate_limit(self) -> bool:
+        """
+        Check if we're close to hitting rate limits.
+        Returns True if it's safe to make API calls, False otherwise.
+        """
+        try:
+            rate_limit = self.github.get_rate_limit()
+            core = rate_limit.core
+            
+            self.remaining_api_calls = core.remaining
+            self.last_api_reset = core.reset.timestamp()
+            
+            if core.remaining < 10:  # Keep a safety buffer
+                reset_time = core.reset.strftime('%H:%M:%S')
+                logger.warning(f"GitHub API rate limit almost exhausted. Resets at {reset_time}")
+                return False
+                
+            return True
+        except Exception as e:
+            logger.error(f"Error checking rate limits: {str(e)}")
+            # Default to being cautious
+            return False
+    
     def _get_repo_commits(self, repo_url: str, since_timestamp=None) -> List[Dict]:
         """
         Get commits from a GitHub repository since the given timestamp.
         Returns a list of commit dictionaries.
         """
+        # Check if we're close to rate limits
+        if not self._check_rate_limit():
+            # Use only cached data if we're close to hitting limits
+            logger.warning(f"Skipping API request for {repo_url} due to rate limit concerns")
+            return []
+        
         try:
             owner, repo_name = self._parse_github_url(repo_url)
             repo = self.github.get_repo(f"{owner}/{repo_name}")
@@ -179,7 +211,8 @@ class GitHubTracker:
                 kwargs['since'] = since_timestamp
             
             commits = []
-            for commit in repo.get_commits(**kwargs):
+            # Limit to the last 10 commits to reduce API calls
+            for commit in list(repo.get_commits(**kwargs))[:10]:
                 commits.append({
                     'hash': commit.sha,
                     'author': commit.author.login if commit.author else 'Unknown',
@@ -190,7 +223,15 @@ class GitHubTracker:
             return commits
             
         except GithubException as e:
-            logger.error(f"GitHub API error for {repo_url}: {str(e)}")
+            if e.status == 403 and "rate limit exceeded" in str(e).lower():
+                logger.error(f"Rate limit exceeded. If this continues, consider using a GitHub token.")
+                # Calculate time until reset
+                if self.last_api_reset > 0:
+                    now = time.time()
+                    wait_time = max(0, self.last_api_reset - now)
+                    logger.info(f"Rate limit will reset in approximately {wait_time:.1f} seconds")
+            else:
+                logger.error(f"GitHub API error for {repo_url}: {str(e)}")
             return []
         except Exception as e:
             logger.error(f"Error fetching commits for {repo_url}: {str(e)}")
@@ -271,17 +312,48 @@ class GitHubTracker:
     def run_polling_loop(self):
         """Run the main polling loop to check repositories."""
         self.running = True
+        
+        # Track repositories to implement staggered polling
+        repos_last_checked = {}
+        
         while self.running:
             try:
+                # Get all repositories
                 repos = self.get_all_repositories()
+                current_time = time.time()
+                
+                # Check if we're approaching rate limits
+                approaching_limit = self.remaining_api_calls < len(repos) * 2  # Buffer for safety
+                
+                # Process repositories in a staggered manner to avoid hitting rate limits
                 for repo in repos:
-                    new_commits = self.check_repository(repo['id'])
-                    if new_commits > 0:
-                        logger.info(f"Found {new_commits} new commits for {repo['repo_name']} ({repo['team_name']})")
+                    repo_id = repo['id']
+                    
+                    # Initialize last checked time if not already set
+                    if repo_id not in repos_last_checked:
+                        repos_last_checked[repo_id] = 0
+                    
+                    # Determine if we should check this repository now
+                    # If approaching rate limits, check less frequently
+                    check_interval = POLLING_INTERVAL * 5 if approaching_limit else POLLING_INTERVAL
+                    
+                    if current_time - repos_last_checked[repo_id] >= check_interval:
+                        new_commits = self.check_repository(repo_id)
+                        repos_last_checked[repo_id] = current_time
+                        
+                        if new_commits > 0:
+                            logger.info(f"Found {new_commits} new commits for {repo['repo_name']} ({repo['team_name']})")
+                
+                # Log rate limit status occasionally
+                if self.remaining_api_calls < 100:
+                    reset_time = datetime.fromtimestamp(self.last_api_reset).strftime('%H:%M:%S')
+                    logger.info(f"GitHub API calls remaining: {self.remaining_api_calls}, resets at {reset_time}")
+                
             except Exception as e:
                 logger.error(f"Error in polling loop: {str(e)}")
             
-            time.sleep(POLLING_INTERVAL)
+            # Sleep before the next polling cycle
+            time.sleep(1)  # Short sleep between cycles
     
     def start(self):
         """Start the tracker in a background thread."""

@@ -1,10 +1,26 @@
 import time
 import sys
 import os
+import argparse
 from github_commit_tracker import GitHubTracker
 
-# Get GitHub token from environment variable (optional but recommended)
-github_token = os.environ.get("GITHUB_TOKEN")
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='GitHub Hackathon Tracker')
+parser.add_argument('--token', type=str, help='GitHub API token')
+args = parser.parse_args()
+
+# Get GitHub token with priority: command line arg > environment variable
+# github_token = args.token if args.token else os.environ.get("GITHUB_TOKEN")
+github_token = ""
+
+if not github_token:
+    print("WARNING: No GitHub API token provided. You may hit rate limits quickly.")
+    print("To use a token, either:")
+    print("  1. Set the GITHUB_TOKEN environment variable, or")
+    print("  2. Pass the token with --token parameter")
+    print("Continuing without a token...")
+else:
+    print("Using provided GitHub API token")
 
 def main():
     # Initialize the tracker
@@ -13,10 +29,14 @@ def main():
     # Add some example teams and repositories
     print("Setting up example teams and repositories...")
     
-    # Team 1
+    # Add your own repositories here
+    # For example:
     team1_id = tracker.add_team("Team Tim")
     tracker.add_repository(team1_id, "https://github.com/timf34/HackIrelandLeaderboard")
     
+    # Add more teams as needed
+    # team2_id = tracker.add_team("Team Beta")
+    # tracker.add_repository(team2_id, "https://github.com/teamname/repo-name")
     
     # Start the tracker
     print("Starting tracker...")
