@@ -12,6 +12,34 @@ function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+// Configure confetti
+function fireConfetti() {
+    const colors = ['#883aea', '#f951d2']; // Purple and pink colors from your theme
+    const end = Date.now() + 1000; // Duration of the effect
+
+    // Create a confetti burst
+    (function frame() {
+        confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: colors
+        });
+        confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: colors
+        });
+
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    }());
+}
+
 // Format relative time (e.g., "2 minutes ago")
 function formatRelativeTime(dateString) {
     const date = new Date(dateString);
@@ -48,12 +76,19 @@ function formatRelativeTime(dateString) {
 
 // Update the leaderboard table
 function updateLeaderboard(data) {
-    // Clear existing rows except for loading message
+    const oldPositions = {};
+    
+    // Store current positions
+    Array.from(leaderboardBody.children).forEach(row => {
+        const teamName = row.querySelector('.team-col')?.textContent;
+        if (teamName) oldPositions[teamName] = true;
+    });
+    
+    // Clear and update table
     while (leaderboardBody.firstChild) {
         leaderboardBody.removeChild(leaderboardBody.firstChild);
     }
     
-    // If no data, show message
     if (!data || data.length === 0) {
         const row = document.createElement('tr');
         row.className = 'loading';
@@ -62,7 +97,6 @@ function updateLeaderboard(data) {
         return;
     }
     
-    // Add team rows
     data.forEach((team, index) => {
         const row = document.createElement('tr');
         
@@ -70,6 +104,11 @@ function updateLeaderboard(data) {
         if (index === 0) row.className = 'top-1';
         else if (index === 1) row.className = 'top-2';
         else if (index === 2) row.className = 'top-3';
+        
+        // Add animation if position changed
+        if (oldPositions[team.team_name]) {
+            row.classList.add('scale-animation');
+        }
         
         row.innerHTML = `
             <td class="rank-col"><span class="rank">${index + 1}</span></td>
@@ -105,6 +144,9 @@ function addEvent(event) {
             </div>
             <span class="timestamp" data-time="${event.created_at}">${formatRelativeTime(event.created_at)}</span>
         `;
+
+        // Fire confetti for new commits!
+        fireConfetti();
     } else {
         eventElement.innerHTML = `
             <div>Unknown event: ${event.event_type}</div>
