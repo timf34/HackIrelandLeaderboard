@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Flask, render_template, jsonify
 from github_commit_tracker import GitHubTracker
 from dotenv import load_dotenv
+from config import load_team_configs, WEB_CONFIG, GITHUB_CONFIG, GITHUB_TOKEN
 
 # Load environment variables from .env file
 load_dotenv()
@@ -13,27 +14,12 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
 
-# Get GitHub token from environment variable
-github_token = os.environ.get("GITHUB_TOKEN")
-if not github_token:
-    print("WARNING: No GitHub API token provided. You may hit rate limits quickly.")
-    print("To use a token, create a .env file with GITHUB_TOKEN=your_token")
-
 # Initialize tracker
-tracker = GitHubTracker(github_token)
+tracker = GitHubTracker(GITHUB_TOKEN)
 
 # Configure tracker with teams
 def setup_tracker():
-    # Define your teams and repositories here
-    # You can move this to a config file later
-    teams = [
-        {
-            "name": "Team Tim",
-            "repos": ["https://github.com/timf34/HackIrelandLeaderboard"]
-        },
-        # Add more teams as needed
-    ]
-    
+    teams = load_team_configs()
     print(f"Setting up tracker with {len(teams)} teams...")
     start_time = time.time()
     

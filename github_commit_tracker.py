@@ -19,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger("github-tracker")
 
 # Constants
-POLLING_INTERVAL = 5  # seconds
+POLLING_INTERVAL = 15  # seconds
 DEFAULT_API_REQUEST_TIMEOUT = 10  # seconds
 DB_PATH = "hackathon_tracker.db"
 
