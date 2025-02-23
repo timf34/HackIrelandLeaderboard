@@ -105,6 +105,7 @@
 	font-size: 1.2rem;
 	color: var(--text-color-alt);
 	letter-spacing: 0.5px;
+	text-align: center;
   }
   
   main {
@@ -353,6 +354,7 @@ tr.top-1 .rank::after {
 	
 	.tagline {
 	  font-size: 1rem;
+	  text-align: left;
 	}
 	
 	.footer-content {
@@ -361,7 +363,7 @@ tr.top-1 .rank::after {
 	}
   }
 
-/* Update GitHub button styling */
+/* GitHub button styling */
 .github-stars {
     position: absolute;
     top: 1rem;
@@ -377,12 +379,12 @@ tr.top-1 .rank::after {
 
 /* Mobile styles */
 @media (max-width: 768px) {
-    .github-stars {
-        /* Reset absolute positioning for mobile */
-        position: static;
-        transform: scale(0.7);
-        padding: 0.15rem 0.3rem;
-        box-shadow: none;
+    .desktop-only {
+        display: none;
+    }
+
+    .mobile-only {
+        display: block;
     }
 
     .subtitle-row {
@@ -396,5 +398,54 @@ tr.top-1 .rank::after {
 
     .tagline {
         font-size: 1rem;
+        text-align: left;
+    }
+
+    .github-stars {
+        position: static;
+        transform: scale(0.65);
+        padding: 0.15rem 0.3rem;
+        box-shadow: none;
+    }
+}
+
+.desktop-only {
+    display: block;
+    text-align: center;
+}
+
+.mobile-only {
+    display: none;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .desktop-only {
+        display: none;
+    }
+
+    .mobile-only {
+        display: block;
+    }
+
+    .subtitle-row {
+        max-width: 1200px;
+        width: 90%;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tagline {
+        font-size: 1rem;
+        text-align: left;
+    }
+
+    .github-stars {
+        position: static;
+        transform: scale(0.65);
+        padding: 0.15rem 0.3rem;
+        box-shadow: none;
     }
 }
