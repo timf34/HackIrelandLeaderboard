@@ -9,3 +9,4 @@ Nice little Flash web app to show hack ireland github activity!
 Create a .env file with your github token (`GITHUB_TOKEN=your_token`)
 
 Run: `python app.py`
+
