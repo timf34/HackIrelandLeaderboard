@@ -44,9 +44,11 @@ class GitHubTracker:
         
     def _init_database(self) -> sqlite3.Connection:
         """Initialize the SQLite database with required tables."""
-        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30.0)
+        
         conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA busy_timeout = 30000")  # 30 second timeout
+        
         cursor = conn.cursor()
         
         # Create teams table
@@ -154,19 +156,6 @@ class GitHubTracker:
         columns = [col[0] for col in cursor.description]
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
     
-    def get_repository_by_id(self, repo_id: int) -> Dict:
-        """Get repository details by ID."""
-        cursor = self.db_conn.cursor()
-        cursor.execute("""
-            SELECT r.id, r.repo_url, r.repo_name, r.total_commits, t.team_name, r.last_checked
-            FROM repositories r
-            JOIN teams t ON r.team_id = t.id
-            WHERE r.id = ?
-        """, (repo_id,))
-        columns = [col[0] for col in cursor.description]
-        row = cursor.fetchone()
-        return dict(zip(columns, row)) if row else None
-    
     def get_leaderboard(self) -> List[Dict]:
         """Get the current leaderboard data."""
         cursor = self.db_conn.cursor()
@@ -210,143 +199,78 @@ class GitHubTracker:
             logger.error(f"Error scraping commits for {repo_url}: {str(e)}")
             return 0
     
-    def _parse_github_url(self, url: str) -> tuple:
-        """Parse a GitHub URL into owner and repo name."""
-        parts = url.rstrip("/").replace("https://github.com/", "").split("/")
-        return parts[0], parts[1]
-    
-    def _check_rate_limit(self) -> bool:
-        """
-        Check if we're close to hitting rate limits.
-        Returns True if it's safe to make API calls, False otherwise.
-        """
-        try:
-            rate_limit = self.github.get_rate_limit()
-            core = rate_limit.core
-            
-            self.remaining_api_calls = core.remaining
-            self.last_api_reset = core.reset.timestamp()
-            
-            if core.remaining < 10:  # Keep a safety buffer
-                reset_time = core.reset.strftime('%H:%M:%S')
-                logger.warning(f"GitHub API rate limit almost exhausted. Resets at {reset_time}")
-                return False
-                
-            return True
-        except Exception as e:
-            logger.error(f"Error checking rate limits: {str(e)}")
-            # Default to being cautious
-            return False
-    
-    def _get_repo_commits(self, repo_url: str, since_timestamp=None) -> List[Dict]:
-        """
-        Get commits from a GitHub repository since the given timestamp.
-        Returns a list of commit dictionaries.
-        """
-        # Check if we're close to rate limits
-        if not self._check_rate_limit():
-            # Use only cached data if we're close to hitting limits
-            logger.warning(f"Skipping API request for {repo_url} due to rate limit concerns")
-            return []
-        
-        try:
-            owner, repo_name = self._parse_github_url(repo_url)
-            repo = self.github.get_repo(f"{owner}/{repo_name}")
-            
-            # Get commits
-            kwargs = {}
-            if since_timestamp:
-                kwargs['since'] = since_timestamp
-            
-            commits = []
-            # Limit to the last 10 commits to reduce API calls
-            for commit in list(repo.get_commits(**kwargs))[:10]:
-                commits.append({
-                    'hash': commit.sha,
-                    'author': commit.author.login if commit.author else 'Unknown',
-                    'message': commit.commit.message,
-                    'timestamp': commit.commit.author.date,
-                })
-            
-            return commits
-            
-        except GithubException as e:
-            if e.status == 403 and "rate limit exceeded" in str(e).lower():
-                logger.error(f"Rate limit exceeded. If this continues, consider using a GitHub token.")
-                # Calculate time until reset
-                if self.last_api_reset > 0:
-                    now = time.time()
-                    wait_time = max(0, self.last_api_reset - now)
-                    logger.info(f"Rate limit will reset in approximately {wait_time:.1f} seconds")
-            else:
-                logger.error(f"GitHub API error for {repo_url}: {str(e)}")
-            return []
-        except Exception as e:
-            logger.error(f"Error fetching commits for {repo_url}: {str(e)}")
-            return []
-    
     def check_repository(self, repo_id: int) -> int:
-        """
-        Check a repository for new commits and update the database.
-        Returns the number of new commits found.
-        """
-        repo = self.get_repository_by_id(repo_id)
-        if not repo:
-            logger.error(f"Repository with ID {repo_id} not found")
-            return 0
+        """Check a repository for new commits and update the database."""
+        cursor = self.db_conn.cursor()
         
-        # Get current total commits
-        current_total = self._get_total_commits(repo['repo_url'])
-        
-        if current_total == 0:
-            # Error fetching commits, don't update anything
-            return 0
-        
-        # Calculate new commits
-        previous_total = repo['total_commits'] or 0
-        new_commit_count = max(0, current_total - previous_total)
-        
-        if new_commit_count > 0:
-            cursor = self.db_conn.cursor()
+        try:
+            # Start transaction
+            cursor.execute("BEGIN")
             
-            # Update repository's total commits
-            cursor.execute(
-                "UPDATE repositories SET total_commits = ?, last_checked = ? WHERE id = ?",
-                (current_total, datetime.now().isoformat(), repo_id)
-            )
+            # Get repository info
+            cursor.execute("""
+                SELECT r.id, r.repo_url, r.repo_name, r.total_commits, t.team_name
+                FROM repositories r
+                JOIN teams t ON r.team_id = t.id
+                WHERE r.id = ?
+            """, (repo_id,))
+            repo = dict(zip(['id', 'repo_url', 'repo_name', 'total_commits', 'team_name'], cursor.fetchone()))
             
-            # Create a new event
-            cursor.execute(
-                "INSERT INTO events (event_type, entity_id, data) VALUES (?, ?, ?)",
-                (
-                    "new_commits", 
-                    repo_id, 
-                    json.dumps({
-                        "repo_id": repo_id,
-                        "team_name": repo['team_name'],
-                        "repo_name": repo['repo_name'],
-                        "new_commit_count": new_commit_count,
-                        "total_commits": current_total
-                    })
+            # Get current total commits
+            current_total = self._get_total_commits(repo['repo_url'])
+            
+            if current_total == 0:
+                return 0
+            
+            # Calculate new commits
+            previous_total = repo['total_commits'] or 0
+            new_commit_count = max(0, current_total - previous_total)
+            
+            if new_commit_count > 0:
+                # Update repository's total commits
+                cursor.execute(
+                    "UPDATE repositories SET total_commits = ?, last_checked = ? WHERE id = ?",
+                    (current_total, datetime.now().isoformat(), repo_id)
                 )
-            )
-            
-            # Add to activity history
-            cursor.execute(
-                "INSERT INTO activity_history (event_type, team_name, repo_name, commit_count, total_commits) VALUES (?, ?, ?, ?, ?)",
-                (
-                    "new_commits",
-                    repo['team_name'],
-                    repo['repo_name'],
-                    new_commit_count,
-                    current_total
+                
+                # Create a new event
+                cursor.execute(
+                    "INSERT INTO events (event_type, entity_id, data) VALUES (?, ?, ?)",
+                    (
+                        "new_commits", 
+                        repo_id, 
+                        json.dumps({
+                            "repo_id": repo_id,
+                            "team_name": repo['team_name'],
+                            "repo_name": repo['repo_name'],
+                            "new_commit_count": new_commit_count,
+                            "total_commits": current_total
+                        })
+                    )
                 )
-            )
+                
+                # Add to activity history
+                cursor.execute(
+                    "INSERT INTO activity_history (event_type, team_name, repo_name, commit_count, total_commits) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        "new_commits",
+                        repo['team_name'],
+                        repo['repo_name'],
+                        new_commit_count,
+                        current_total
+                    )
+                )
             
+            # Commit the transaction
             self.db_conn.commit()
             self.new_commits_event.set()
-        
-        return new_commit_count
+            return new_commit_count
+            
+        except sqlite3.Error as e:
+            # Rollback on error
+            self.db_conn.rollback()
+            logger.error(f"Database error in check_repository: {e}")
+            return 0
     
     def run_polling_loop(self):
         """Run the main polling loop to check repositories."""

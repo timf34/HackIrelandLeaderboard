@@ -72,18 +72,13 @@ def get_repositories():
 @app.route('/api/stats')
 def get_stats():
     """Return some statistics about the tracker."""
-    from datetime import datetime
-    
     repos = tracker.get_all_repositories()
     
     # Calculate stats
     stats = {
         "total_teams": len(set([repo["team_name"] for repo in repos])),
         "total_repos": len(repos),
-        "total_commits": sum(repo["total_commits"] for repo in repos),
-        "api_calls_remaining": tracker.remaining_api_calls,
-        "api_reset_time": datetime.fromtimestamp(tracker.last_api_reset).strftime('%H:%M:%S') 
-            if tracker.last_api_reset > 0 else "Unknown"
+        "total_commits": sum(repo["total_commits"] or 0 for repo in repos)
     }
     
     return jsonify(stats)
