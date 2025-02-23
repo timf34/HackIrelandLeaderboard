@@ -154,7 +154,7 @@ function addEvent(event) {
             <div>
                 <span class="team-name">${data.team_name}</span> made 
                 <span class="commit-count">${data.new_commit_count} new commit${data.new_commit_count !== 1 ? 's' : ''}</span> 
-                on ${data.repo_name} at ${timeStr}
+                at ${timeStr}
             </div>
             <span class="timestamp" data-time="${event.created_at}">${formatRelativeTime(event.created_at)}</span>
         `;
@@ -228,7 +228,7 @@ async function fetchInitialActivity() {
                     <div>
                         <span class="team-name">${activity.team_name}</span> made 
                         <span class="commit-count">${activity.commit_count} new commit${activity.commit_count !== 1 ? 's' : ''}</span> 
-                        on ${activity.repo_name} at ${timeStr}
+                        at ${timeStr}
                     </div>
                     <span class="timestamp" title="${activity.local_timestamp}">
                         ${formatTimestamp(activity.local_timestamp)}
