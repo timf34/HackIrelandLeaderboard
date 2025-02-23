@@ -245,8 +245,8 @@ async function fetchInitialActivity() {
             eventsFeed.removeChild(loadingEvent);
         }
         
-        // Add each activity to the feed, starting from oldest to maintain correct order
-        activities.reverse().forEach(activity => {
+        // Add each activity to the feed - no need to reverse since they're already in DESC order
+        activities.forEach(activity => {
             const eventElement = document.createElement('div');
             eventElement.className = 'event';
             
