@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import os
 from dotenv import load_dotenv
+import numpy as np
 
 # Load environment variables
 load_dotenv()
@@ -47,7 +48,7 @@ def get_commits(owner, repo, since_time):
 
 def create_hourly_commit_graph():
     # Get current time and time 30 hours ago
-    end_time = datetime.now()
+    end_time = datetime.now().replace(hour=13, minute=0, second=0, microsecond=0)  # Set end time to 13:00
     start_time = end_time - timedelta(hours=30)
     
     # Read repositories from CSV
@@ -61,12 +62,13 @@ def create_hourly_commit_graph():
         owner, repo = extract_repo_info(repo_url)
         commits = get_commits(owner, repo, start_time)
         
-        # Count commits per hour
+        # Count commits per hour, but only up to 13:00
         for commit in commits:
             commit_time = datetime.strptime(commit['commit']['author']['date'], 
                                          '%Y-%m-%dT%H:%M:%SZ')
-            hour_key = commit_time.replace(minute=0, second=0, microsecond=0)
-            hourly_commits[hour_key] += 1
+            if commit_time <= end_time:  # Only include commits up to 13:00
+                hour_key = commit_time.replace(minute=0, second=0, microsecond=0)
+                hourly_commits[hour_key] += 1
     
     # Create lists for plotting
     hours = sorted(hourly_commits.keys())
@@ -75,24 +77,62 @@ def create_hourly_commit_graph():
     # Format hours to show only HH:00
     hour_labels = [hour.strftime('%H:00') for hour in hours]
     
-    # Create the plot
-    plt.figure(figsize=(12, 6))
-    plt.plot(range(len(hours)), commit_counts, marker='o')
+    # Set the style
+    plt.style.use('dark_background')
+    
+    # Create figure with dark background
+    fig = plt.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    background_color = '#2a2d3a'  # Lighter grey background
+    fig.patch.set_facecolor(background_color)
+    ax.set_facecolor(background_color)
+    
+    # Plot with gradient line
+    line = plt.plot(range(len(hours)), commit_counts, marker='o', linewidth=2.5)[0]
+    
+    # Create gradient effect for the line
+    from matplotlib.patheffects import withStroke
+    line.set_color('#883aea')
+    line.set_markerfacecolor('#f951d2')
+    line.set_markeredgecolor('#f951d2')
+    line.set_path_effects([withStroke(linewidth=4, foreground=(0.53, 0.23, 0.92, 0.2))])
     
     # Customize the plot
-    plt.title('Hourly Commit Activity Across All Repositories')
-    plt.xlabel('Hour')
-    plt.ylabel('Number of Commits')
-    plt.grid(True)
+    plt.title('Hourly Commit Activity', 
+             color='white', 
+             pad=20,
+             fontsize=14,
+             fontweight='bold')
+    plt.xlabel('Hour', color='#aaa')
+    plt.ylabel('Number of Commits', color='#aaa')
+    
+    # Customize grid
+    plt.grid(True, color=(1, 1, 1, 0.05), linestyle='-', linewidth=1)
     
     # Set x-axis ticks and labels
-    plt.xticks(range(len(hours)), hour_labels, rotation=45)
+    plt.xticks(range(len(hours)), hour_labels, rotation=45, color='#aaa')
+    plt.yticks(color='#aaa')
+    
+    # Style the spines
+    for spine in ax.spines.values():
+        spine.set_color((1, 1, 1, 0.1))
+    
+    # Add subtle glow effect
+    from matplotlib.colors import LinearSegmentedColormap
+    z = [[0,0],[0,0]]
+    levels = np.linspace(0, 0.5, 100)
+    cmap = LinearSegmentedColormap.from_list('custom', [(0.53, 0.23, 0.92, 0), (0.53, 0.23, 0.92, 0.2)])
+    ax.contourf(z, levels, cmap=cmap, origin='lower', extent=[0, len(hours)-1, min(commit_counts), max(commit_counts)])
     
     # Adjust layout to prevent label cutoff
     plt.tight_layout()
     
-    # Save the plot
-    plt.savefig('commit_activity.png')
+    # Save the plot with the new background color
+    plt.savefig('commit_activity.png', 
+                facecolor=background_color,
+                edgecolor='none',
+                bbox_inches='tight',
+                dpi=300)
     print("Graph has been saved as 'commit_activity.png'")
 
 if __name__ == "__main__":
