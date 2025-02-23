@@ -56,9 +56,15 @@ def get_leaderboard():
 @app.route('/api/events')
 def get_events():
     events = tracker.get_unprocessed_events()
+    
+    # Add debugging
+    for event in events:
+        print(f"Event timestamp: {event.get('created_at')}")
+        if isinstance(event.get('data'), dict):
+            print(f"Event data timestamp: {event['data'].get('timestamp')}")
+    
     event_ids = [event['id'] for event in events]
     
-    # Mark events as processed
     if event_ids:
         tracker.mark_events_processed(event_ids)
     

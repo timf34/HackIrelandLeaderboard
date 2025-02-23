@@ -227,7 +227,8 @@ class GitHubTracker:
             new_commit_count = max(0, current_total - previous_total)
             
             if new_commit_count > 0:
-                current_time = datetime.now().isoformat()
+                # Use UTC timestamp
+                current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                 
                 # Update repository's total commits
                 cursor.execute(
@@ -235,7 +236,7 @@ class GitHubTracker:
                     (current_total, current_time, repo_id)
                 )
                 
-                # Create a new event
+                # Create a new event with proper timestamp
                 cursor.execute(
                     "INSERT INTO events (event_type, entity_id, data, created_at) VALUES (?, ?, ?, ?)",
                     (
@@ -246,13 +247,14 @@ class GitHubTracker:
                             "team_name": repo['team_name'],
                             "repo_name": repo['repo_name'],
                             "new_commit_count": new_commit_count,
-                            "total_commits": current_total
+                            "total_commits": current_total,
+                            "timestamp": current_time  # Add timestamp to the JSON data
                         }),
                         current_time
                     )
                 )
                 
-                # Add to activity history
+                # Add to activity history with same timestamp
                 cursor.execute(
                     "INSERT INTO activity_history (event_type, team_name, repo_name, commit_count, total_commits, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                     (

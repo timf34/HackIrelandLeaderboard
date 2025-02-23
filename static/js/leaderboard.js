@@ -46,7 +46,8 @@ function fireConfetti() {
 
 // Format relative time (e.g., "2 minutes ago")
 function formatRelativeTime(dateString) {
-    const date = new Date(dateString);
+    // Parse the UTC date string and convert to local time
+    const date = new Date(dateString + 'Z');  // Append 'Z' to indicate UTC
     const now = new Date();
     const seconds = Math.floor((now - date) / 1000);
     
@@ -80,7 +81,17 @@ function formatRelativeTime(dateString) {
 
 // Format time only (e.g., "12:34 PM")
 function formatTimeOnly(dateString) {
-    const date = new Date(dateString);
+    if (!dateString) {
+        return formatTimeOnly(new Date().toISOString());
+    }
+    
+    // Parse the UTC date string and convert to local time
+    const date = new Date(dateString + 'Z');  // Append 'Z' to indicate UTC
+    if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return formatTimeOnly(new Date().toISOString());
+    }
+    
     return date.toLocaleTimeString([], { 
         hour: '2-digit', 
         minute: '2-digit',
@@ -148,7 +159,8 @@ function addEvent(event) {
     
     if (event.event_type === 'new_commits') {
         const data = event.data;
-        const timeStr = formatTimeOnly(event.created_at);
+        const timestamp = data.timestamp || event.created_at || new Date().toISOString();
+        const timeStr = formatTimeOnly(timestamp);
         
         eventElement.innerHTML = `
             <div>
@@ -156,15 +168,16 @@ function addEvent(event) {
                 <span class="commit-count">${data.new_commit_count} new commit${data.new_commit_count !== 1 ? 's' : ''}</span> 
                 at ${timeStr}
             </div>
-            <span class="timestamp" data-time="${event.created_at}">${formatRelativeTime(event.created_at)}</span>
+            <span class="timestamp" data-time="${timestamp}">just now</span>
         `;
         
         // Fire confetti for new commits!
         fireConfetti();
     } else {
+        const timestamp = event.created_at || new Date().toISOString();
         eventElement.innerHTML = `
             <div>Unknown event: ${event.event_type}</div>
-            <span class="timestamp" data-time="${event.created_at}">${formatRelativeTime(event.created_at)}</span>
+            <span class="timestamp" data-time="${timestamp}">just now</span>
         `;
     }
     
@@ -184,9 +197,13 @@ function addEvent(event) {
     }, 2000);
 }
 
-// Add new function to format timestamps
+// Update formatTimestamp function to handle invalid dates
 function formatTimestamp(timestamp) {
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+        return 'just now';  // Return 'just now' for invalid dates
+    }
+    
     const now = new Date();
     const diffMinutes = Math.floor((now - date) / (1000 * 60));
     
@@ -244,12 +261,19 @@ async function fetchInitialActivity() {
     }
 }
 
-// Add function to update timestamps periodically
+// Update the updateTimestamps function to handle new events better
 function updateTimestamps() {
     const timestamps = document.querySelectorAll('.timestamp');
     timestamps.forEach(timestamp => {
-        const originalTime = timestamp.getAttribute('title');
-        timestamp.textContent = formatTimestamp(originalTime);
+        const originalTime = timestamp.getAttribute('data-time');
+        if (originalTime) {
+            const date = new Date(originalTime);
+            if (!isNaN(date.getTime())) {
+                timestamp.textContent = formatRelativeTime(originalTime);
+            } else {
+                timestamp.textContent = 'just now';
+            }
+        }
     });
 }
 
