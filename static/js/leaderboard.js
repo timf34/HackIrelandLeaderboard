@@ -231,11 +231,52 @@ async function updateStarCount() {
     }
 }
 
-// Initialize the app
+// Add new function to fetch initial activity history
+async function fetchInitialActivity() {
+    try {
+        const response = await fetch('/api/recent-activity');
+        if (!response.ok) throw new Error('Failed to fetch activity history');
+        
+        const activities = await response.json();
+        
+        // Clear any loading messages
+        const loadingEvent = eventsFeed.querySelector('.loading');
+        if (loadingEvent) {
+            eventsFeed.removeChild(loadingEvent);
+        }
+        
+        // Add each activity to the feed, starting from oldest to maintain correct order
+        activities.reverse().forEach(activity => {
+            const eventElement = document.createElement('div');
+            eventElement.className = 'event';
+            
+            if (activity.event_type === 'new_commits') {
+                eventElement.innerHTML = `
+                    <div>
+                        <span class="team-name">${activity.team_name}</span> made 
+                        <span class="commit-count">${activity.commit_count} new commit${activity.commit_count !== 1 ? 's' : ''}</span> 
+                        on ${activity.repo_name}
+                    </div>
+                    <span class="timestamp" data-time="${activity.timestamp}">${formatRelativeTime(activity.timestamp)}</span>
+                `;
+            }
+            
+            eventsFeed.appendChild(eventElement);
+        });
+        
+        // Update timestamps
+        updateTimestamps();
+        
+    } catch (error) {
+        console.error('Error fetching activity history:', error);
+    }
+}
+
+// Update the init function to include initial activity load
 function init() {
     // Initial data load
     fetchLeaderboard();
-    fetchEvents();
+    fetchInitialActivity();
     
     // Add GitHub star count polling
     updateStarCount();

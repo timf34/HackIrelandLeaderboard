@@ -97,6 +97,19 @@ class GitHubTracker:
             )
         ''')
         
+        # Create activity_history table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activity_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                team_name TEXT NOT NULL,
+                repo_name TEXT NOT NULL,
+                commit_count INTEGER,
+                total_commits INTEGER,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
         return conn
     
@@ -318,6 +331,18 @@ class GitHubTracker:
                 )
             )
             
+            # Add to activity history
+            cursor.execute(
+                "INSERT INTO activity_history (event_type, team_name, repo_name, commit_count, total_commits) VALUES (?, ?, ?, ?, ?)",
+                (
+                    "new_commits",
+                    repo['team_name'],
+                    repo['repo_name'],
+                    new_commit_count,
+                    current_total
+                )
+            )
+            
             self.db_conn.commit()
             self.new_commits_event.set()
         
@@ -413,3 +438,23 @@ class GitHubTracker:
         """Close the database connection."""
         if self.db_conn:
             self.db_conn.close()
+
+    def get_recent_activity(self, limit: int = 50) -> List[Dict]:
+        """Get recent activity history."""
+        cursor = self.db_conn.cursor()
+        cursor.execute("""
+            SELECT 
+                id,
+                event_type,
+                team_name,
+                repo_name,
+                commit_count,
+                total_commits,
+                timestamp
+            FROM activity_history
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (limit,))
+        
+        columns = [col[0] for col in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]

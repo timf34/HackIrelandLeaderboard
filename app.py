@@ -88,6 +88,12 @@ def get_stats():
     
     return jsonify(stats)
 
+@app.route('/api/recent-activity')
+def get_recent_activity():
+    """Return recent activity history."""
+    activity = tracker.get_recent_activity(limit=50)
+    return jsonify(activity)
+
 if __name__ == '__main__':
     # Setup tracker
     setup_tracker()
