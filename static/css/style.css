@@ -63,9 +63,10 @@
 	pointer-events: none;
   }
   
+  /* Update header layout */
   header {
 	text-align: center;
-	padding: 2rem 1rem;
+	padding: 2rem 1rem 1rem;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	background: rgba(19, 21, 26, 0.95);
 	backdrop-filter: blur(10px);
@@ -80,13 +81,24 @@
   h1 {
 	font-size: 3rem;
 	font-weight: var(--font-weight-bold);
-	margin-bottom: 0.5rem;
+	margin-bottom: 1.5rem;
 	letter-spacing: -1px;
 	background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
 	-webkit-background-clip: text;
 	-webkit-text-fill-color: transparent;
 	background-clip: text;
 	text-fill-color: transparent;
+	text-align: center;
+  }
+  
+  /* Subtitle and GitHub button container */
+  .subtitle-row {
+	max-width: 1200px;
+	width: 90%;
+	margin: 0 auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
   }
   
   .tagline {
@@ -349,7 +361,7 @@ tr.top-1 .rank::after {
 	}
   }
 
-/* GitHub button styling */
+/* Update GitHub button styling */
 .github-stars {
     position: absolute;
     top: 1rem;
@@ -363,19 +375,26 @@ tr.top-1 .rank::after {
     transition: all 0.3s ease;
 }
 
-.github-stars:hover {
-    box-shadow: 0 0 20px rgba(136, 58, 234, 0.4);
-    border-color: var(--accent-color);
-}
+/* Mobile styles */
+@media (max-width: 768px) {
+    .github-stars {
+        /* Reset absolute positioning for mobile */
+        position: static;
+        transform: scale(0.7);
+        padding: 0.15rem 0.3rem;
+        box-shadow: none;
+    }
 
-/* Override GitHub button default styles */
-.github-stars .github-button {
-    color: var(--text-color) !important;
-    font-family: var(--font-family) !important;
-    text-decoration: none !important;
-}
+    .subtitle-row {
+        max-width: 1200px;
+        width: 90%;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-/* Add subtle purple glow to the GitHub icon */
-.github-stars iframe {
-    filter: drop-shadow(0 0 2px var(--primary-color));
+    .tagline {
+        font-size: 1rem;
+    }
 }
