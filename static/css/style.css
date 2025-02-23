@@ -174,6 +174,7 @@
   
   tbody tr {
 	transition: background-color 0.3s ease;
+	color: var(--text-color);
   }
   
   tbody tr:hover {
@@ -202,30 +203,31 @@
   }
   
   /* Top 3 Styling */
-  tr.top-1 td {
-	color: gold;
-	font-weight: var(--font-weight-bold);
-  }
-  
-  tr.top-2 td {
-	color: silver;
-	font-weight: var(--font-weight-bold);
-  }
-  
-  tr.top-3 td {
-	color: #cd7f32; /* Bronze */
-	font-weight: var(--font-weight-bold);
-  }
-  
-  tr.top-1 .rank, tr.top-2 .rank, tr.top-3 .rank {
-	position: relative;
-  }
-  
-  tr.top-1 .rank::after {
-	content: "👑";
-	margin-left: 5px;
-	font-size: 1.2rem;
-  }
+  tr.top-1 td, tr.top-2 td, tr.top-3 td {
+    font-weight: var(--font-weight-bold);
+}
+
+tr.top-1 td {
+    color: #ffd700; /* Gold */
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.15);
+}
+
+tr.top-2 td {
+    color: #c0c0c0; /* Silver */
+    text-shadow: 0 0 5px rgba(192, 192, 192, 0.15);
+}
+
+tr.top-3 td {
+    color: #cd7f32; /* Bronze */
+    text-shadow: 0 0 5px rgba(205, 127, 50, 0.15);
+}
+
+/* Simple crown for first place only */
+tr.top-1 .rank::after {
+    content: "👑";
+    margin-left: 5px;
+    font-size: 1rem;
+}
   
   .events-feed {
 	max-height: 500px;
@@ -346,3 +348,34 @@
 	  gap: 0.5rem;
 	}
   }
+
+/* GitHub button styling */
+.github-stars {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    background: rgba(30, 32, 40, 0.8);
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    box-shadow: 0 0 15px rgba(136, 58, 234, 0.2);
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.github-stars:hover {
+    box-shadow: 0 0 20px rgba(136, 58, 234, 0.4);
+    border-color: var(--accent-color);
+}
+
+/* Override GitHub button default styles */
+.github-stars .github-button {
+    color: var(--text-color) !important;
+    font-family: var(--font-family) !important;
+    text-decoration: none !important;
+}
+
+/* Add subtle purple glow to the GitHub icon */
+.github-stars iframe {
+    filter: drop-shadow(0 0 2px var(--primary-color));
+}

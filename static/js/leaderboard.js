@@ -7,6 +7,10 @@ const eventsFeed = document.getElementById('events-feed');
 const LEADERBOARD_POLL_INTERVAL = 5000;  // 5 seconds
 const EVENTS_POLL_INTERVAL = 2000;       // 2 seconds
 
+// GitHub repository and polling interval
+const GITHUB_REPO = "timf34/HackIrelandLeaderboard";
+const GITHUB_POLL_INTERVAL = 300000; // 5 minutes (300 seconds)
+
 // Format number with commas for thousands
 function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -209,11 +213,33 @@ async function fetchEvents() {
     }
 }
 
+// Add this function to fetch star count
+async function updateStarCount() {
+    try {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`);
+        if (!response.ok) throw new Error('Failed to fetch GitHub data');
+        
+        const data = await response.json();
+        const starCount = data.stargazers_count;
+        
+        // Force GitHub button to re-render with new count
+        if (window.GitHubButton) {
+            window.GitHubButton.render();
+        }
+    } catch (error) {
+        console.error('Error fetching GitHub stars:', error);
+    }
+}
+
 // Initialize the app
 function init() {
     // Initial data load
     fetchLeaderboard();
     fetchEvents();
+    
+    // Add GitHub star count polling
+    updateStarCount();
+    setInterval(updateStarCount, GITHUB_POLL_INTERVAL);
     
     // Set up polling for updates
     setInterval(fetchLeaderboard, LEADERBOARD_POLL_INTERVAL);
