@@ -83,7 +83,7 @@ def create_hourly_commit_graph():
     # Create figure with dark background
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
-    background_color = '#2a2d3a'  # Lighter grey background
+    background_color = '#13151a'  # Matching --background-color from style.css
     fig.patch.set_facecolor(background_color)
     ax.set_facecolor(background_color)
     
@@ -103,15 +103,16 @@ def create_hourly_commit_graph():
              pad=20,
              fontsize=14,
              fontweight='bold')
-    plt.xlabel('Hour', color='#aaa')
-    plt.ylabel('Number of Commits', color='#aaa')
+    plt.xlabel('Hour', color='white')
+    plt.ylabel('Number of Commits', color='white')
     
     # Customize grid
     plt.grid(True, color=(1, 1, 1, 0.05), linestyle='-', linewidth=1)
     
-    # Set x-axis ticks and labels
-    plt.xticks(range(len(hours)), hour_labels, rotation=45, color='#aaa')
-    plt.yticks(color='#aaa')
+    # Set x-axis ticks and labels with white color and bold font
+    plt.xticks(range(len(hours)), hour_labels, rotation=45, color='white', 
+               fontsize=11, fontweight='bold')
+    plt.yticks(color='white', fontsize=11, fontweight='bold')
     
     # Style the spines
     for spine in ax.spines.values():
