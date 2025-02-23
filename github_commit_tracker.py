@@ -45,6 +45,8 @@ class GitHubTracker:
     def _init_database(self) -> sqlite3.Connection:
         """Initialize the SQLite database with required tables."""
         conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 5000")
         cursor = conn.cursor()
         
         # Create teams table
