@@ -227,15 +227,17 @@ class GitHubTracker:
             new_commit_count = max(0, current_total - previous_total)
             
             if new_commit_count > 0:
+                current_time = datetime.now().isoformat()
+                
                 # Update repository's total commits
                 cursor.execute(
                     "UPDATE repositories SET total_commits = ?, last_checked = ? WHERE id = ?",
-                    (current_total, datetime.now().isoformat(), repo_id)
+                    (current_total, current_time, repo_id)
                 )
                 
                 # Create a new event
                 cursor.execute(
-                    "INSERT INTO events (event_type, entity_id, data) VALUES (?, ?, ?)",
+                    "INSERT INTO events (event_type, entity_id, data, created_at) VALUES (?, ?, ?, ?)",
                     (
                         "new_commits", 
                         repo_id, 
@@ -245,19 +247,21 @@ class GitHubTracker:
                             "repo_name": repo['repo_name'],
                             "new_commit_count": new_commit_count,
                             "total_commits": current_total
-                        })
+                        }),
+                        current_time
                     )
                 )
                 
                 # Add to activity history
                 cursor.execute(
-                    "INSERT INTO activity_history (event_type, team_name, repo_name, commit_count, total_commits) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO activity_history (event_type, team_name, repo_name, commit_count, total_commits, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                     (
                         "new_commits",
                         repo['team_name'],
                         repo['repo_name'],
                         new_commit_count,
-                        current_total
+                        current_total,
+                        current_time
                     )
                 )
             
@@ -374,7 +378,7 @@ class GitHubTracker:
                 repo_name,
                 commit_count,
                 total_commits,
-                timestamp
+                datetime(timestamp, 'localtime') as local_timestamp
             FROM activity_history
             ORDER BY timestamp DESC
             LIMIT ?

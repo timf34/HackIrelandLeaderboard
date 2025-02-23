@@ -78,6 +78,16 @@ function formatRelativeTime(dateString) {
     return "just now";
 }
 
+// Format time only (e.g., "12:34 PM")
+function formatTimeOnly(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    }).toUpperCase();
+}
+
 // Update the leaderboard table
 function updateLeaderboard(data) {
     const oldPositions = {};
@@ -138,17 +148,17 @@ function addEvent(event) {
     
     if (event.event_type === 'new_commits') {
         const data = event.data;
-        const timestamp = new Date(event.created_at).toLocaleString();
+        const timeStr = formatTimeOnly(event.created_at);
         
         eventElement.innerHTML = `
             <div>
                 <span class="team-name">${data.team_name}</span> made 
                 <span class="commit-count">${data.new_commit_count} new commit${data.new_commit_count !== 1 ? 's' : ''}</span> 
-                on ${data.repo_name}
+                on ${data.repo_name} at ${timeStr}
             </div>
             <span class="timestamp" data-time="${event.created_at}">${formatRelativeTime(event.created_at)}</span>
         `;
-
+        
         // Fire confetti for new commits!
         fireConfetti();
     } else {
@@ -174,12 +184,72 @@ function addEvent(event) {
     }, 2000);
 }
 
-// Update relative timestamps
+// Add new function to format timestamps
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMinutes = Math.floor((now - date) / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+    
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+}
+
+// Update the event creation in fetchInitialActivity
+async function fetchInitialActivity() {
+    try {
+        const response = await fetch('/api/recent-activity');
+        if (!response.ok) throw new Error('Failed to fetch activity history');
+        
+        const activities = await response.json();
+        
+        // Clear any loading messages
+        const loadingEvent = eventsFeed.querySelector('.loading');
+        if (loadingEvent) {
+            eventsFeed.removeChild(loadingEvent);
+        }
+        
+        // Add each activity to the feed
+        activities.forEach(activity => {
+            const eventElement = document.createElement('div');
+            eventElement.className = 'event';
+            
+            if (activity.event_type === 'new_commits') {
+                const timeStr = formatTimeOnly(activity.local_timestamp);
+                
+                eventElement.innerHTML = `
+                    <div>
+                        <span class="team-name">${activity.team_name}</span> made 
+                        <span class="commit-count">${activity.commit_count} new commit${activity.commit_count !== 1 ? 's' : ''}</span> 
+                        on ${activity.repo_name} at ${timeStr}
+                    </div>
+                    <span class="timestamp" title="${activity.local_timestamp}">
+                        ${formatTimestamp(activity.local_timestamp)}
+                    </span>
+                `;
+            }
+            
+            eventsFeed.appendChild(eventElement);
+        });
+        
+    } catch (error) {
+        console.error('Error fetching activity history:', error);
+    }
+}
+
+// Add function to update timestamps periodically
 function updateTimestamps() {
-    const timestamps = document.querySelectorAll('.timestamp[data-time]');
-    timestamps.forEach(element => {
-        const time = element.getAttribute('data-time');
-        element.textContent = formatRelativeTime(time);
+    const timestamps = document.querySelectorAll('.timestamp');
+    timestamps.forEach(timestamp => {
+        const originalTime = timestamp.getAttribute('title');
+        timestamp.textContent = formatTimestamp(originalTime);
     });
 }
 
@@ -231,47 +301,6 @@ async function updateStarCount() {
     }
 }
 
-// Add new function to fetch initial activity history
-async function fetchInitialActivity() {
-    try {
-        const response = await fetch('/api/recent-activity');
-        if (!response.ok) throw new Error('Failed to fetch activity history');
-        
-        const activities = await response.json();
-        
-        // Clear any loading messages
-        const loadingEvent = eventsFeed.querySelector('.loading');
-        if (loadingEvent) {
-            eventsFeed.removeChild(loadingEvent);
-        }
-        
-        // Add each activity to the feed - no need to reverse since they're already in DESC order
-        activities.forEach(activity => {
-            const eventElement = document.createElement('div');
-            eventElement.className = 'event';
-            
-            if (activity.event_type === 'new_commits') {
-                eventElement.innerHTML = `
-                    <div>
-                        <span class="team-name">${activity.team_name}</span> made 
-                        <span class="commit-count">${activity.commit_count} new commit${activity.commit_count !== 1 ? 's' : ''}</span> 
-                        on ${activity.repo_name}
-                    </div>
-                    <span class="timestamp" data-time="${activity.timestamp}">${formatRelativeTime(activity.timestamp)}</span>
-                `;
-            }
-            
-            eventsFeed.appendChild(eventElement);
-        });
-        
-        // Update timestamps
-        updateTimestamps();
-        
-    } catch (error) {
-        console.error('Error fetching activity history:', error);
-    }
-}
-
 // Update the init function to include initial activity load
 function init() {
     // Initial data load
@@ -286,7 +315,7 @@ function init() {
     setInterval(fetchLeaderboard, LEADERBOARD_POLL_INTERVAL);
     setInterval(fetchEvents, EVENTS_POLL_INTERVAL);
     
-    // Update relative timestamps every minute
+    // Update timestamps every minute
     setInterval(updateTimestamps, 60000);
 }
 
