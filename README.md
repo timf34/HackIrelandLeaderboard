@@ -2,7 +2,7 @@
 
 ![alt text](image.png)
 
-Nice little Flash web app to show hack ireland github activity!
+Nice little Flash web app to show hack ireland github activity (confetti included;) )!
 
 `pip install -r requirements.txt`
 
